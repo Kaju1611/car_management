@@ -99,7 +99,11 @@ export default function DashboardPage() {
       if (cars.length === 1 && currentPage > 1) {
         const newPage = currentPage - 1;
         setCurrentPage(newPage);
-        searchQuery ? searchCars(searchQuery, newPage) : fetchCars(newPage);
+        if (searchQuery) {
+          searchCars(searchQuery, newPage);
+        } else {
+          fetchCars(newPage);
+        }
       }
     } catch (error) {
       toast.error(getErrorMessage(error));

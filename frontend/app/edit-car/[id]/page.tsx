@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -21,13 +21,7 @@ export default function EditCarPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) { router.replace('/login'); return; }
-    fetchCar();
-  }, [id, router]);
-
-  const fetchCar = async () => {
+  const fetchCar = useCallback(async () => {
     setIsFetching(true);
     try {
       const response = await carsApi.getOne(id);
@@ -38,7 +32,13 @@ export default function EditCarPage() {
     } finally {
       setIsFetching(false);
     }
-  };
+  }, [id, router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) { router.replace('/login'); return; }
+    fetchCar();
+  }, [id, router, fetchCar]);
 
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);

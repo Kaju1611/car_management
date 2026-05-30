@@ -54,19 +54,7 @@ export default function CarDetailPage() {
     setSelectedIndex(emblaApi.selectedScrollSnap());
   }, [emblaApi]);
 
-  useEffect(() => {
-    if (!emblaApi) return;
-    emblaApi.on('select', onSelect);
-    onSelect();
-  }, [emblaApi, onSelect]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) { router.replace('/login'); return; }
-    fetchCar();
-  }, [id, router]);
-
-  const fetchCar = async () => {
+  const fetchCar = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await carsApi.getOne(id);
@@ -77,7 +65,19 @@ export default function CarDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id, router]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    emblaApi.on('select', onSelect);
+    onSelect();
+  }, [emblaApi, onSelect]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) { router.replace('/login'); return; }
+    fetchCar();
+  }, [id, router, fetchCar]);
 
   const handleDelete = async () => {
     setIsDeleting(true);
