@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Car, MapPin, Building2, Tag, Pencil, Trash2, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,14 @@ interface CarCardProps {
 }
 
 export default function CarCard({ car, onDelete }: CarCardProps) {
+  const router = useRouter();
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/edit-car/${car._id}`);
+  };
+
   return (
     <Link href={`/car/${car._id}`} className="block group">
       <Card className="overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 h-full">
@@ -101,10 +110,13 @@ export default function CarCard({ car, onDelete }: CarCardProps) {
           <span className="text-xs text-muted-foreground">{formatRelativeDate(car.createdAt)}</span>
 
           <div className="flex gap-1" onClick={(e) => e.preventDefault()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-              <Link href={`/edit-car/${car._id}`}>
-                <Pencil className="h-3.5 w-3.5" />
-              </Link>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={handleEditClick}
+            >
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
 
             <AlertDialog>
