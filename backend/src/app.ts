@@ -12,6 +12,9 @@ import { swaggerSpec } from './docs/swagger';
 
 const app = express();
 
+// Trust proxy - required for Render and other reverse proxies
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -55,12 +58,14 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
+  skip: (req) => process.env.NODE_ENV === 'development',
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, message: 'Too many auth attempts, please try again later.' },
+  skip: (req) => process.env.NODE_ENV === 'development',
 });
 
 app.use(globalLimiter);
