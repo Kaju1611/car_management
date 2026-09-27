@@ -122,10 +122,78 @@ export const getCars = async (
     const sort = (req.query.sort as string) || '-createdAt';
     const skip = (page - 1) * limit;
 
-    const query = { createdBy: req.user!._id };
+    // Show cars from ALL users
+    const query = {};
 
     const [cars, total] = await Promise.all([
-      Car.find(query).sort(sort).skip(skip).limit(limit).lean(),
+      Car.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Car.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: cars,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+ 
+// GET /api/cars/search
+export const searchCars = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const search = (req.query.q as string)?.trim();
+
+    if (!search) {
+      res.status(400).json({
+        success: false,
+        message: 'Search query is required',
+      });
+      return;
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const searchRegex = new RegExp(search, 'i');
+
+    // Search ALL users' cars
+    const query = {
+      $or: [
+        { title: searchRegex },
+        { description: searchRegex },
+        { 'tags.company': searchRegex },
+        { 'tags.carType': searchRegex },
+        { 'tags.dealer': searchRegex },
+        { 'tags.customTags': searchRegex },
+      ],
+    };
+
+    const [cars, total] = await Promise.all([
+      Car.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
       Car.countDocuments(query),
     ]);
 
@@ -146,61 +214,6 @@ export const getCars = async (
   }
 };
 
-// GET /api/cars/search
-export const searchCars = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { q } = req.query;
-
-    if (!q || typeof q !== 'string' || q.trim() === '') {
-      res.status(400).json({
-        success: false,
-        message: 'Search query is required',
-      });
-      return;
-    }
-
-    const searchRegex = new RegExp(q.trim(), 'i');
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-
-    const query = {
-      createdBy: req.user!._id,
-      $or: [
-        { title: searchRegex },
-        { description: searchRegex },
-        { 'tags.company': searchRegex },
-        { 'tags.carType': searchRegex },
-        { 'tags.dealer': searchRegex },
-        { 'tags.customTags': searchRegex },
-      ],
-    };
-
-    const [cars, total] = await Promise.all([
-      Car.find(query).sort('-createdAt').skip(skip).limit(limit).lean(),
-      Car.countDocuments(query),
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: cars,
-      query: q,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 // GET /api/cars/:id
 export const getCar = async (
   req: AuthRequest,
@@ -208,10 +221,8 @@ export const getCar = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const car = await Car.findOne({
-      _id: req.params.id,
-      createdBy: req.user!._id,
-    });
+    // Anyone who is authenticated can view any car
+    const car = await Car.findById(req.params.id).lean();
 
     if (!car) {
       res.status(404).json({
@@ -385,25 +396,70 @@ export const deleteCar = async (
 };
 
 // GET /api/cars/stats
+// ======================================================
+// GET /api/cars/stats
+// GLOBAL statistics - ALL USERS
+// ======================================================
+
 export const getCarStats = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user!._id;
+    // IMPORTANT:
+    // Do NOT filter by createdBy.
+    // Statistics are now calculated for ALL cars
+    // created by ALL users.
 
-    const [totalCars, companiesAgg, dealersAgg] = await Promise.all([
-      Car.countDocuments({ createdBy: userId }),
+    const [
+      totalCars,
+      companiesAgg,
+      dealersAgg,
+    ] = await Promise.all([
+      // Total cars from ALL users
+      Car.countDocuments({}),
+
+      // Unique companies from ALL users
       Car.aggregate([
-        { $match: { createdBy: userId } },
-        { $group: { _id: '$tags.company' } },
-        { $count: 'count' },
+        {
+          $match: {
+            'tags.company': {
+              $exists: true,
+              $ne: '',
+              $ne: null,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$tags.company',
+          },
+        },
+        {
+          $count: 'count',
+        },
       ]),
+
+      // Unique dealers from ALL users
       Car.aggregate([
-        { $match: { createdBy: userId } },
-        { $group: { _id: '$tags.dealer' } },
-        { $count: 'count' },
+        {
+          $match: {
+            'tags.dealer': {
+              $exists: true,
+              $ne: '',
+              $ne: null,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$tags.dealer',
+          },
+        },
+        {
+          $count: 'count',
+        },
       ]),
     ]);
 

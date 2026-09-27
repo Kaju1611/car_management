@@ -1,0 +1,18 @@
+services:
+  mongodb:
+    image: mongo:8
+    container_name: carvault-mongodb
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: change-this-password
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - carvault_mongodb_data:/data/db
+
+volumes:
+  carvault_mongodb_data:
