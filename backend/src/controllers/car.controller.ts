@@ -426,8 +426,7 @@ export const getCarStats = async (
           $match: {
             'tags.company': {
               $exists: true,
-              $ne: '',
-              $ne: null,
+              $nin: ['', null],
             },
           },
         },
@@ -447,8 +446,7 @@ export const getCarStats = async (
           $match: {
             'tags.dealer': {
               $exists: true,
-              $ne: '',
-              $ne: null,
+              $nin: ['', null],
             },
           },
         },

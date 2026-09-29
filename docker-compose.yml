@@ -14,5 +14,69 @@ services:
     volumes:
       - carvault_mongodb_data:/data/db
 
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--username", "admin",
+          "--password", "change-this-password",
+          "--authenticationDatabase", "admin",
+          "--eval", "db.adminCommand('ping')"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: carvault-backend
+    restart: unless-stopped
+
+    ports:
+      - "5000:5000"
+
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+
+      # "mongodb" here is the service name above — Docker Compose gives every
+      # service a DNS entry on the shared network, so the backend container
+      # reaches Mongo by service name, never by "localhost".
+      MONGO_URI: mongodb://admin:change-this-password@mongodb:27017/car-management?authSource=admin
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+
+      # Must match the origin the browser actually loads the frontend from,
+      # or the backend's CORS check will reject every request.
+      FRONTEND_URL: http://localhost:3000
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # IMPORTANT: this is consumed by the BROWSER, not by the frontend
+        # container itself, so it must stay "localhost" (the host machine),
+        # not "backend" (which only resolves inside the Compose network).
+        NEXT_PUBLIC_API_URL: http://localhost:5000
+    container_name: carvault-frontend
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - backend
+
 volumes:
   carvault_mongodb_data:
